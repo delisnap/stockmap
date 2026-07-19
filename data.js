@@ -467,7 +467,8 @@ const LINKS = [
     "from": "hynix",
     "to": "nvda",
     "type": "supply",
-    "label": "HBM 최대 공급 (HBM4 점유율 55%)"
+    "label": "HBM 최대 공급 (HBM4 점유율 55%)",
+    "v": { "at": "2026-07-19", "conf": "high", "src": "newdaily.co.kr" }
   },
   {
     "from": "mu",
@@ -479,7 +480,8 @@ const LINKS = [
     "from": "samsung",
     "to": "nvda",
     "type": "supply",
-    "label": "HBM4 공급 (2026.2 양산, 점유율 28%)"
+    "label": "HBM4 공급 (2026.2 양산, 점유율 28%)",
+    "v": { "at": "2026-07-19", "conf": "high", "src": "epnc.co.kr" }
   },
   {
     "from": "hynix",
@@ -497,7 +499,8 @@ const LINKS = [
     "from": "mu",
     "to": "hynix",
     "type": "compete",
-    "label": "HBM4 3파전 (하이닉스 55 · 삼성 28 · 마이크론 17)"
+    "label": "HBM4 3파전 (하이닉스 55 · 삼성 28 · 마이크론 17)",
+    "v": { "at": "2026-07-19", "conf": "high", "src": "newdaily.co.kr" }
   },
   {
     "from": "nvda",
@@ -557,13 +560,15 @@ const LINKS = [
     "from": "avgo",
     "to": "openai",
     "type": "partner",
-    "label": "Jalapeño 추론칩 공동 개발 (2026.6 공개)"
+    "label": "Jalapeño 추론칩 공동 개발 (2026.6 공개)",
+    "v": { "at": "2026-07-19", "conf": "high", "src": "openai.com" }
   },
   {
     "from": "mrvl",
     "to": "amzn",
     "type": "partner",
-    "label": "Trainium 주 설계 파트너 (3·4세대는 불확실)"
+    "label": "Trainium 주 설계 파트너 (3·4세대는 불확실)",
+    "v": { "at": "2026-07-19", "conf": "weak", "src": "finance.yahoo.com" }
   },
   {
     "from": "avgo",
@@ -593,7 +598,8 @@ const LINKS = [
     "from": "intc",
     "to": "tsm",
     "type": "compete",
-    "label": "파운드리 도전"
+    "label": "파운드리 도전",
+    "v": { "at": "2026-07-19", "conf": "high", "src": "intel.com" }
   },
   {
     "from": "samsung",
@@ -605,31 +611,36 @@ const LINKS = [
     "from": "msft",
     "to": "openai",
     "type": "invest",
-    "label": "대규모 투자 · 2026.4 비독점 전환"
+    "label": "대규모 투자 · 2026.4 비독점 전환",
+    "v": { "at": "2026-07-19", "conf": "high", "src": "openai.com" }
   },
   {
     "from": "amzn",
     "to": "openai",
     "type": "invest",
-    "label": "2026.2 최대 500억달러 투자 (1,100억 라운드)"
+    "label": "2026.2 최대 500억달러 투자 (1,100억 라운드)",
+    "v": { "at": "2026-07-19", "conf": "high", "src": "cnbc.com" }
   },
   {
     "from": "orcl",
     "to": "openai",
     "type": "customer",
-    "label": "Stargate — 5년 약 3,000억달러"
+    "label": "Stargate — 5년 약 3,000억달러",
+    "v": { "at": "2026-07-19", "conf": "high", "src": "openai.com" }
   },
   {
     "from": "amzn",
     "to": "anthropic",
     "type": "invest",
-    "label": "최대 250억달러 투자 · Trainium 5GW"
+    "label": "최대 250억달러 투자 · Trainium 5GW",
+    "v": { "at": "2026-07-19", "conf": "high", "src": "cnbc.com" }
   },
   {
     "from": "googl",
     "to": "anthropic",
     "type": "invest",
-    "label": "최대 400억달러 투자 · TPU 5GW"
+    "label": "최대 400억달러 투자 · TPU 5GW",
+    "v": { "at": "2026-07-19", "conf": "high", "src": "datacenterfrontier.com" }
   },
   {
     "from": "googl",
@@ -665,19 +676,22 @@ const LINKS = [
     "from": "nvda",
     "to": "smci",
     "type": "supply",
-    "label": "GPU → 서버 조립"
+    "label": "GPU → 서버 조립",
+    "v": { "at": "2026-07-19", "conf": "high", "src": "sec.gov" }
   },
   {
     "from": "anet",
     "to": "meta",
     "type": "customer",
-    "label": "최대 고객 (아리스타 매출의 26%)"
+    "label": "최대 고객 (아리스타 매출의 26%)",
+    "v": { "at": "2026-07-19", "conf": "high", "src": "trefis.com" }
   },
   {
     "from": "anet",
     "to": "msft",
     "type": "customer",
-    "label": "주요 고객 (아리스타 매출의 16%)"
+    "label": "주요 고객 (아리스타 매출의 16%)",
+    "v": { "at": "2026-07-19", "conf": "high", "src": "trefis.com" }
   },
   {
     "from": "avgo",
@@ -689,19 +703,22 @@ const LINKS = [
     "from": "anet",
     "to": "nvda",
     "type": "compete",
-    "label": "이더넷 vs InfiniBand — 엔비디아가 Spectrum-X로 역공"
+    "label": "이더넷 vs InfiniBand — 엔비디아가 Spectrum-X로 역공",
+    "v": { "at": "2026-07-19", "conf": "high", "src": "fierce-network.com" }
   },
   {
     "from": "vrt",
     "to": "msft",
     "type": "customer",
-    "label": "전력·냉각 (조기 파트너십, 개별 계약 미확인)"
+    "label": "전력·냉각 (조기 파트너십, 개별 계약 미확인)",
+    "v": { "at": "2026-07-19", "conf": "weak", "src": "enkiai.com" }
   },
   {
     "from": "vrt",
     "to": "orcl",
     "type": "customer",
-    "label": "전력·냉각 (조기 파트너십, 개별 계약 미확인)"
+    "label": "전력·냉각 (조기 파트너십, 개별 계약 미확인)",
+    "v": { "at": "2026-07-19", "conf": "weak", "src": "enkiai.com" }
   },
   {
     "from": "arm",
@@ -725,6 +742,7 @@ const LINKS = [
     "from": "pltr",
     "to": "msft",
     "type": "partner",
-    "label": "Azure 정부·기밀 클라우드에 AIP 배포"
+    "label": "Azure 정부·기밀 클라우드에 AIP 배포",
+    "v": { "at": "2026-07-19", "conf": "high", "src": "businesswire.com" }
   }
 ];

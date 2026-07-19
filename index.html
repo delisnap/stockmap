@@ -146,6 +146,31 @@
   .mine{display:inline-block;font-size:9.5px;padding:2px 6px;border-radius:4px;
     background:#7dd3fc22;color:var(--accent);margin-left:6px;vertical-align:2px}
 
+  /* ── 검증 ── */
+  .vbar{display:flex;height:6px;border-radius:3px;overflow:hidden;background:var(--panel2);margin-bottom:9px}
+  .vbar i{display:block}
+  .vrow{display:flex;align-items:center;gap:7px;font-size:11.5px;color:var(--tx2);padding:2px 0}
+  .vrow b{margin-left:auto;font-variant-numeric:tabular-nums;color:var(--tx);font-weight:600}
+  .vdot{width:7px;height:7px;border-radius:50%;flex:none}
+  .vtoggle{margin-top:7px}
+  .vchip{
+    display:inline-flex;align-items:center;gap:4px;flex:none;
+    font-size:9.5px;font-weight:700;padding:2px 6px;border-radius:4px;
+    border:1px solid transparent;cursor:pointer;font-family:inherit;
+    line-height:1.5;white-space:nowrap;
+  }
+  .vchip:hover{filter:brightness(1.12)}
+  .vchip .w{opacity:.75;font-weight:500}
+  .rel-item{position:relative}
+  .rel-top{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+  .vmeta{font-size:10.5px;color:var(--tx3);margin-top:3px}
+  .vmeta a{color:var(--tx3)}
+  .vsum{
+    font-size:11.5px;color:var(--tx2);background:var(--panel2);
+    border-radius:7px;padding:9px 11px;margin:14px 0 0;line-height:1.6;
+  }
+  .vsum b{color:var(--tx)}
+
   /* ── 모달 ── */
   #veil{position:fixed;inset:0;background:var(--scrim);display:none;z-index:50;
     align-items:center;justify-content:center;padding:24px}
@@ -221,6 +246,19 @@
     <div class="sec">
       <h2>관계</h2>
       <div id="ltypes"></div>
+    </div>
+    <div class="sec">
+      <h2>검증</h2>
+      <div class="vbar" id="vbar"></div>
+      <div id="vstat"></div>
+      <label class="chk vtoggle" id="tPaint">
+        <span class="bar" style="background:var(--tx3)"></span>
+        <span style="color:inherit">검증 상태로 색칠</span>
+      </label>
+      <label class="chk vtoggle" id="tStale">
+        <span class="bar" style="background:var(--tx3)"></span>
+        <span style="color:inherit">확인 안 된 것만</span>
+      </label>
     </div>
     <div class="sec" id="mybox" style="display:none">
       <h2>내가 추가한 항목</h2>
@@ -310,9 +348,9 @@ const LS = 'stockmap.custom.v1';
 function loadCustom(){
   try{
     const c = JSON.parse(localStorage.getItem(LS));
-    if(c && c.sectors && c.nodes && c.links) return c;
+    if(c && c.sectors && c.nodes && c.links) return { verify:{}, ...c };
   }catch(e){}
-  return { sectors:{}, nodes:[], links:[] };
+  return { sectors:{}, nodes:[], links:[], verify:{} };
 }
 let custom = loadCustom();
 function saveCustom(){
@@ -367,8 +405,41 @@ const state = {
   query:   '',
   selected:null,
   hover:   null,
+  verifyPaint: false,   // 관계색 대신 검증 상태로 칠하기
+  onlyStale:   false,   // 미검증·만료만 보기
 };
 const quotes = {};
+
+/* ═══════════════════════════════════════════
+   2-2. 검증 상태
+   2026-07 감사에서 확인된 것: 구조적 관계(공급·경쟁)는 잘 안 변하고
+   계약·투자 관계는 반년이면 낡는다. 유효기간을 종류별로 다르게 둔다.
+   ═══════════════════════════════════════════ */
+const VERIFY_TTL = {          // 단위: 일
+  invest:   180,
+  customer: 180,
+  partner:  270,
+  supply:   540,
+  compete:  540,
+};
+const VSTATUS = {
+  ok:    { name:'확인됨',   color:'#2ebd85', mark:'✓' },
+  due:   { name:'갱신 필요', color:'#f0a832', mark:'↻' },
+  never: { name:'미검증',   color:'#8b97a8', mark:'?' },
+};
+const linkKey = l => `${l.from}|${l.to}|${l.type}`;
+const DAY = 86400000;
+
+// data.js의 v + 사용자가 사이트에서 기록한 검증을 합친다 (사용자 쪽이 최신)
+function verifyOf(l){ return custom.verify?.[linkKey(l)] ?? l.v ?? null; }
+
+function verifyStatus(l){
+  const v = verifyOf(l);
+  if(!v || !v.at) return 'never';
+  const age = (Date.now() - Date.parse(v.at)) / DAY;
+  return age > (VERIFY_TTL[l.type] ?? 365) ? 'due' : 'ok';
+}
+const daysSince = at => Math.max(0, Math.floor((Date.now() - Date.parse(at)) / DAY));
 
 /* ═══════════ 3. 사이드바 ═══════════ */
 const secBox = document.getElementById('sectors');
@@ -415,6 +486,34 @@ function renderLinkList(){
 renderLinkList();
 document.getElementById('q').oninput = e=>{
   state.query = e.target.value.trim().toLowerCase(); paint();
+};
+
+/* ── 검증 현황 패널 ── */
+function verifyCounts(){
+  const c = { ok:0, due:0, never:0 };
+  for(const l of links) c[verifyStatus(l)]++;
+  return c;
+}
+function renderVerifyBox(){
+  const c = verifyCounts(), total = links.length || 1;
+  document.getElementById('vbar').innerHTML =
+    ['ok','due','never'].map(k =>
+      `<i style="width:${c[k]/total*100}%;background:${VSTATUS[k].color}"></i>`).join('');
+  document.getElementById('vstat').innerHTML =
+    ['ok','due','never'].map(k =>
+      `<div class="vrow"><span class="vdot" style="background:${VSTATUS[k].color}"></span>
+         ${VSTATUS[k].name}<b>${c[k]}</b></div>`).join('');
+}
+document.getElementById('tPaint').onclick = e=>{
+  state.verifyPaint = !state.verifyPaint;
+  e.currentTarget.classList.toggle('on', state.verifyPaint);
+  paint();
+};
+document.getElementById('tStale').onclick = e=>{
+  state.onlyStale = !state.onlyStale;
+  e.currentTarget.classList.toggle('on', state.onlyStale);
+  paint();
+  drawDetail(state.selected);
 };
 
 function renderMyBox(){
@@ -546,9 +645,13 @@ function paint(){
     } else e.ch.textContent='';
   }
   for(const [l,p] of lineEls){
-    const vis = state.types.has(l.type) && nodeVisible(l.s) && nodeVisible(l.t);
+    const st = verifyStatus(l);
+    let vis = state.types.has(l.type) && nodeVisible(l.s) && nodeVisible(l.t);
+    if(vis && state.onlyStale && st === 'ok') vis = false;
     p.style.display = vis ? '' : 'none';
     if(!vis) continue;
+    // 검증 모드에서는 관계 종류 대신 검증 상태로 칠한다
+    p.setAttribute('stroke', state.verifyPaint ? VSTATUS[st].color : adj(LINK_TYPES[l.type].color));
     const on = focus && (l.s===focus || l.t===focus);
     p.classList.toggle('hot', !!on);
     p.classList.toggle('dim', !!focus && !on);
@@ -563,7 +666,7 @@ function rebuildAll(keep){
   state.hover = null;
   alpha = Math.max(alpha, .5);
   for(let i=0;i<80;i++) tick();
-  paint(); positionOnly(); renderSectorList();
+  paint(); positionOnly(); renderSectorList(); renderVerifyBox();
   drawDetail(state.selected);
   document.getElementById('hint').textContent = `${nodes.length}개 기업 · ${links.length}개 관계`;
   renderMyBox();
@@ -608,22 +711,44 @@ function drawDetail(n){
     <div class="role">${esc(n.role)}</div>
     <div class="desc">${esc(n.desc)}</div>
     <h3 class="rel">연결 관계 (${rels.length})</h3>
-    <div id="rels">${rels.map((l,i)=>{
+    <div id="rels">${rels.map(l=>{
       const other = l.s===n ? l.t : l.s;
       const out = l.s===n, T = LINK_TYPES[l.type];
+      const st = verifyStatus(l), V = VSTATUS[st], v = verifyOf(l);
+      const weak = v && v.conf === 'weak';
+      const chip = `<button class="vchip" data-k="${esc(linkKey(l))}"
+          style="background:${V.color}1e;color:${V.color};border-color:${V.color}44"
+          title="검증 기록 남기기">${V.mark} ${V.name}${weak?'<span class="w">·근거 약함</span>':''}</button>`;
+      const meta = v && v.at
+        ? `<div class="vmeta">${esc(v.at)} 확인 · ${daysSince(v.at)}일 경과${
+             v.src?` · ${esc(v.src)}`:''}${v.note?` · ${esc(v.note)}`:''}</div>`
+        : '';
       return `<div class="rel-item" data-id="${esc(other.id)}">
         <span class="rel-tag" style="background:${adj(T.color)}22;color:${adj(T.color)}">${T.name}</span>
         <div class="rel-body">
-          <div class="rel-name">${out?'':'<span class="arrow">← </span>'}${esc(other.name)}${out?' <span class="arrow">→</span>':''}</div>
+          <div class="rel-top">
+            <span class="rel-name">${out?'':'<span class="arrow">← </span>'}${esc(other.name)}${out?' <span class="arrow">→</span>':''}</span>
+            ${chip}
+          </div>
           <div class="rel-lab">${esc(l.label)}</div>
+          ${meta}
         </div></div>`;
     }).join('') || '<div class="rel-lab" style="padding:8px 0">표시할 관계가 없습니다.</div>'}</div>
+    ${(()=>{ const c={ok:0,due:0,never:0}; rels.forEach(l=>c[verifyStatus(l)]++);
+       return c.never||c.due
+         ? `<div class="vsum">이 기업의 관계 ${rels.length}건 중 <b>${c.never+c.due}건</b>이
+              확인되지 않았거나 오래됐습니다. 배지를 눌러 기록할 수 있습니다.</div>`
+         : `<div class="vsum">이 기업의 관계 <b>${rels.length}건 모두</b> 최근 확인됐습니다.</div>`; })()}
     ${ n.ticker ? `<a class="exlink" target="_blank" rel="noopener"
         href="https://finance.yahoo.com/quote/${encodeURIComponent(n.ticker)}">Yahoo Finance에서 차트 보기 ↗</a>` : '' }
     ${ mine ? `<button class="btn solid" id="editN" style="margin-top:10px">이 기업 수정</button>
                <button class="btn solid" id="delN">이 기업 삭제</button>` : '' }
   `;
   D.querySelectorAll('.rel-item').forEach(el=>el.onclick=()=>select(byId[el.dataset.id]));
+  D.querySelectorAll('.vchip').forEach(el=>el.onclick=e=>{
+    e.stopPropagation();                     // 상대 노드로 이동하지 않게
+    openVerify(el.dataset.k);
+  });
   const ph = D.querySelector('#pubHere');
   if(ph) ph.onclick = e=>{ e.preventDefault(); ghPublish(); };
   if(mine){
@@ -871,6 +996,80 @@ function delCompany(id){
   toast(`“${n.name}” 삭제됨`);
 }
 
+/* ═══════════════════════════════════════════
+   8-3. 검증 기록
+   ═══════════════════════════════════════════ */
+function openVerify(key){
+  const l = links.find(x => linkKey(x) === key);
+  if(!l) return;
+  const v = verifyOf(l) || {};
+  const st = verifyStatus(l), V = VSTATUS[st];
+  const today = new Date().toISOString().slice(0,10);
+  const ttl = VERIFY_TTL[l.type] ?? 365;
+
+  modal.innerHTML = `
+    <h2>관계 검증 기록</h2>
+    <p class="sub">
+      <b>${esc(l.s.name)}</b> ${LINK_TYPES[l.type].name}
+      <b>${esc(l.t.name)}</b> — “${esc(l.label)}”<br>
+      현재 상태 <b style="color:${V.color}">${V.mark} ${V.name}</b>${
+        v.at ? ` · ${esc(v.at)} 확인 후 ${daysSince(v.at)}일 경과` : ''} ·
+      이 종류(${LINK_TYPES[l.type].name})의 유효기간은 <b>${ttl}일</b>입니다.
+    </p>
+    <div class="row2">
+      <div class="f"><label>확인일</label>
+        <input type="text" id="vAt" value="${esc(v.at || today)}" placeholder="2026-07-19"></div>
+      <div class="f"><label>근거 신뢰도</label>
+        <select id="vConf">
+          <option value="high" ${v.conf!=='weak'?'selected':''}>확실 — 1차 출처로 확인</option>
+          <option value="weak" ${v.conf==='weak'?'selected':''}>약함 — 정황만 확인</option>
+        </select></div>
+    </div>
+    <div class="f"><label>근거 (도메인 또는 URL)</label>
+      <input type="text" id="vSrc" value="${esc(v.src || '')}" placeholder="openai.com"></div>
+    <div class="f"><label>메모</label>
+      <input type="text" id="vNote" value="${esc(v.note || '')}" placeholder="무엇을 확인했는지 한 줄"></div>
+    <div class="tip" style="font-size:10.5px;color:var(--tx3);line-height:1.6">
+      계약·투자 관계는 반년이면 낡습니다. 유효기간이 지나면 자동으로
+      <b style="color:${VSTATUS.due.color}">갱신 필요</b>로 바뀝니다.
+    </div>
+    <div class="err" id="err"></div>
+    <div class="acts">
+      ${v.at ? '<button id="clr" style="margin-right:auto">미검증으로 되돌리기</button>' : ''}
+      <button id="cancel">취소</button>
+      <button class="pri" id="ok">기록</button>
+    </div>`;
+  veil.classList.add('on');
+  modal.querySelector('#cancel').onclick = closeModal;
+
+  const clr = modal.querySelector('#clr');
+  if(clr) clr.onclick = ()=>{
+    custom.verify[key] = { at:null };   // data.js의 v를 덮어써 미검증으로
+    saveCustom(); closeModal();
+    paint(); renderVerifyBox(); drawDetail(state.selected);
+    toast('미검증으로 되돌렸습니다');
+  };
+
+  modal.querySelector('#ok').onclick = ()=>{
+    const at = modal.querySelector('#vAt').value.trim();
+    if(!/^\d{4}-\d{2}-\d{2}$/.test(at) || isNaN(Date.parse(at))){
+      modal.querySelector('#err').textContent = '확인일을 2026-07-19 형식으로 입력하세요.'; return;
+    }
+    if(Date.parse(at) > Date.now() + DAY){
+      modal.querySelector('#err').textContent = '미래 날짜는 기록할 수 없습니다.'; return;
+    }
+    custom.verify[key] = {
+      at,
+      conf: modal.querySelector('#vConf').value,
+      src:  modal.querySelector('#vSrc').value.trim() || undefined,
+      note: modal.querySelector('#vNote').value.trim() || undefined,
+    };
+    saveCustom(); closeModal();
+    paint(); renderVerifyBox(); drawDetail(state.selected);
+    toast('검증 기록됨 — GitHub에 반영하면 영구 저장됩니다');
+  };
+}
+
 /* ── 내보내기 / 초기화 ── */
 function buildDataJs(){
   const j = o => JSON.stringify(o, null, 2);
@@ -882,7 +1081,14 @@ const LINK_TYPES = ${j(LINK_TYPES)};
 
 const NODES = ${j(ALLN.map(({id,name,ticker,sector,role,desc,tags})=>({id,name,ticker,sector,role,desc,tags:tags||[]})))};
 
-const LINKS = ${j(ALLL.map(({from,to,type,label})=>({from,to,type,label})))};
+const LINKS = ${j(ALLL.map(l=>{
+    // 사이트에서 기록한 검증을 data.js에 굽는다 (at:null 이면 미검증으로 되돌린 것)
+    const ov = custom.verify?.[`${l.from}|${l.to}|${l.type}`];
+    const v = ov !== undefined ? (ov.at ? ov : null) : (l.v ?? null);
+    const out = { from:l.from, to:l.to, type:l.type, label:l.label };
+    if(v) out.v = v;
+    return out;
+  }))};
 `;
 }
 document.getElementById('exportBtn').onclick = ()=>{
@@ -894,7 +1100,7 @@ document.getElementById('exportBtn').onclick = ()=>{
 };
 document.getElementById('resetBtn').onclick = ()=>{
   if(!confirm('추가한 업종·기업·관계를 모두 삭제합니다. 계속할까요?')) return;
-  custom = { sectors:{}, nodes:[], links:[] };
+  custom = { sectors:{}, nodes:[], links:[], verify:{} };
   saveCustom(); state.selected=null; rebuildAll(false);
   toast('추가 항목을 모두 삭제했습니다');
 };
@@ -1080,7 +1286,7 @@ rebuildModel(); build();
 document.getElementById('hint').textContent = `${nodes.length}개 기업 · ${links.length}개 관계`;
 for(let i=0;i<420;i++) tick();
 (function loop(){ tick(); requestAnimationFrame(loop); })();
-paint(); positionOnly(); renderSectorList(); drawDetail(null); renderMyBox();
+paint(); positionOnly(); renderSectorList(); renderVerifyBox(); drawDetail(null); renderMyBox();
 setTimeout(fit,60);
 loadSnapshot().then(()=>{ paint(); if(state.selected) drawDetail(state.selected); return loadAllQuotes(); });
 </script>
