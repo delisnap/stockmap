@@ -194,7 +194,8 @@
   #toast{position:fixed;left:50%;bottom:28px;transform:translateX(-50%) translateY(20px);
     background:var(--panel2);border:1px solid var(--line);color:var(--tx);
     padding:10px 18px;border-radius:9px;font-size:12.5px;opacity:0;pointer-events:none;
-    transition:.25s;z-index:60;box-shadow:0 10px 30px #0008}
+    transition:.25s;z-index:60;box-shadow:0 10px 30px #0008;
+    max-width:min(560px,90vw);line-height:1.6;text-align:center}
   #toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
 
   @media (max-width:860px){ #side{display:none} #detail{width:290px} }
@@ -682,7 +683,9 @@ document.addEventListener('keydown', e=>{ if(e.key==='Escape') closeModal(); });
 function toast(msg){
   const t=document.getElementById('toast');
   t.textContent=msg; t.classList.add('on');
-  clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove('on'),2400);
+  // 긴 오류 메시지는 읽을 시간이 필요하다
+  const ms = Math.min(12000, Math.max(2400, msg.length * 110));
+  clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove('on'), ms);
 }
 const PALETTE = ['#7dd3fc','#4ade80','#fbbf24','#c084fc','#f472b6','#fb923c',
                  '#f87171','#34d399','#a78bfa','#facc15','#22d3ee','#e879f9'];
@@ -932,25 +935,44 @@ async function ghPublish(){
   const btn = document.getElementById('publishBtn') || {};
   const label = btn.textContent;
   btn.disabled = true; btn.textContent = '반영 중…';
+  // GitHub은 실패 사유를 본문 message에 담아준다 — 그대로 보여줘야 원인을 안다
+  const detail = async (res) => {
+    try{ const j = await res.json(); return j.message ? ` — ${j.message}` : ''; }
+    catch(e){ return ''; }
+  };
+  const call = async (url, opt) => {
+    try{ return await fetch(url, opt); }
+    catch(e){
+      // fetch가 던지는 TypeError는 상태코드가 아니라 연결 자체의 실패다
+      console.error('[StockMap] GitHub 요청 실패', e);
+      throw new Error('GitHub에 연결하지 못했습니다 — 광고·추적 차단 확장 프로그램이 '
+                    + 'api.github.com을 막고 있는지 확인하세요 (' + e.message + ')');
+    }
+  };
   try{
-    const cur = await fetch(`${api}?ref=${encodeURIComponent(c.branch)}`, {headers:H});
-    if(cur.status === 401) throw new Error('토큰이 잘못되었거나 만료되었습니다');
-    if(cur.status === 404) throw new Error('저장소나 브랜치를 찾을 수 없습니다 (토큰 권한도 확인하세요)');
-    if(!cur.ok) throw new Error(`data.js 조회 실패 (HTTP ${cur.status})`);
+    const cur = await call(`${api}?ref=${encodeURIComponent(c.branch)}`, {headers:H});
+    if(cur.status === 401) throw new Error('토큰이 잘못되었거나 만료되었습니다' + await detail(cur));
+    if(cur.status === 403) throw new Error('토큰 권한이 부족합니다' + await detail(cur));
+    if(cur.status === 404) throw new Error(`${c.owner}/${c.repo} (${c.branch})의 data.js를 찾을 수 없습니다`
+                                           + ' — 저장소 이름과 토큰의 접근 범위를 확인하세요' + await detail(cur));
+    if(!cur.ok) throw new Error(`data.js 조회 실패 (HTTP ${cur.status})` + await detail(cur));
     const sha = (await cur.json()).sha;
+    if(!sha) throw new Error('data.js의 sha를 읽지 못했습니다');
 
-    const res = await fetch(api, {
+    const res = await call(api, {
       method:'PUT', headers:{...H, 'Content-Type':'application/json'},
       body: JSON.stringify({
         message: `지도 업데이트 — 업종 ${Object.keys(custom.sectors).length} · 기업 ${custom.nodes.length}`,
         content: b64(buildDataJs()), sha, branch: c.branch,
       }),
     });
-    if(res.status === 403) throw new Error('권한이 없습니다 — 토큰에 Contents 쓰기 권한이 필요합니다');
+    if(res.status === 403) throw new Error('쓰기 권한이 없습니다 — 토큰에 Contents: Read and write가 필요합니다'
+                                           + await detail(res));
     if(res.status === 409) throw new Error('다른 곳에서 먼저 수정됐습니다 — 새로고침 후 다시 시도하세요');
-    if(!res.ok) throw new Error(`반영 실패 (HTTP ${res.status})`);
+    if(!res.ok) throw new Error(`반영 실패 (HTTP ${res.status})` + await detail(res));
     toast('반영됨 — 몇 분 뒤 시세가 채워지고 사이트가 갱신됩니다');
   }catch(e){
+    console.error('[StockMap] 반영 실패', e);
     toast('❌ ' + e.message);
   }finally{
     btn.disabled = false; btn.textContent = label;
