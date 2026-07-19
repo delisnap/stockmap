@@ -6,7 +6,10 @@ on:
   workflow_dispatch:            # Actions 탭에서 수동 실행
   push:
     branches: [main]
-    paths: ['data.js']          # 종목을 추가하면 바로 시세를 받아옴
+    paths:                      # 종목이나 수집 로직이 바뀌면 바로 갱신
+      - 'data.js'
+      - 'scripts/fetch-quotes.mjs'
+      - '.github/workflows/quotes.yml'
 
 permissions:
   contents: write
