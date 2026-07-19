@@ -1,4 +1,13 @@
-/* StockMap 데이터 — 2026. 7. 19. 오후 12:59:11 내보냄 */
+/* StockMap 데이터
+ *
+ * 최종 검증: 2026-07-19 — 관계 56건 중 14건을 웹 검색으로 대조.
+ *   수정 4건 (MS-OpenAI 독점 해제, 삼성 HBM4 양산, 엔비디아 점유율, 아리스타 고객 비중)
+ *   추가 1건 (아마존 → OpenAI 투자)
+ *   삭제 1건 (슈퍼마이크로 → 메타 — 근거 확인 실패)
+ *
+ * 나머지 42건은 미검증 상태다. "확인됨"이 아니라 "확인하지 않음"이다.
+ * 특히 개별 계약을 주장하는 항목(전력·냉각 등)은 근거가 약하다.
+ */
 
 const SECTORS = {
   "chip": {
@@ -66,7 +75,7 @@ const NODES = [
     "ticker": "NVDA",
     "sector": "chip",
     "role": "AI 가속기(GPU) 절대 강자",
-    "desc": "H100/B200 등 AI 학습·추론용 GPU 시장의 80~90%를 점유. CUDA 소프트웨어 생태계가 진입장벽. 데이터센터 매출이 전체의 대부분.",
+    "desc": "AI 학습·추론용 GPU 시장의 70~85%를 점유(2026년 추정, 출처별 편차). CUDA 생태계가 진입장벽이나 빅테크 커스텀 실리콘이 합산 15~20%까지 잠식. 최근에는 Spectrum-X로 이더넷 스위치 시장까지 진입.",
     "tags": [
       "GPU",
       "CUDA",
@@ -217,7 +226,7 @@ const NODES = [
     "ticker": "005930.KS",
     "sector": "memory",
     "role": "메모리 + 파운드리 동시 보유",
-    "desc": "D램 1위이자 TSMC를 쫓는 파운드리 2위. HBM에서는 하이닉스에 밀렸으나 추격 중.",
+    "desc": "D램 1위이자 TSMC를 쫓는 파운드리 2위. HBM4가 엔비디아 품질 테스트 최고 평가를 받고 2026년 2월 양산에 진입해 HBM 점유율 28% 전망 — 더 이상 단순 추격자가 아님.",
     "tags": [
       "DRAM",
       "파운드리",
@@ -230,7 +239,7 @@ const NODES = [
     "ticker": "MSFT",
     "sector": "cloud",
     "role": "Azure + OpenAI 최대 파트너",
-    "desc": "AI 수요를 클라우드(Azure) 매출로 직접 환산하는 구조. OpenAI에 대규모 투자하고 모델을 제품에 탑재.",
+    "desc": "AI 수요를 클라우드(Azure) 매출로 직접 환산하는 구조. 2026년 4월 OpenAI와의 파트너십이 재편되며 독점 클라우드 지위를 잃었고, IP 라이선스는 2032년까지 비독점으로 유지.",
     "tags": [
       "Azure",
       "Copilot"
@@ -268,7 +277,7 @@ const NODES = [
     "ticker": "AMZN",
     "sector": "cloud",
     "role": "AWS + 자체칩 트레이니엄",
-    "desc": "클라우드 점유율 1위. 자체 학습칩(Trainium)·추론칩(Inferentia)을 마벨/안나푸르나와 개발. 앤스로픽에 대규모 투자.",
+    "desc": "클라우드 점유율 1위. 자체 학습칩(Trainium)·추론칩(Inferentia)을 마벨 등과 개발. 앤스로픽에 최대 250억달러, 2026년 2월에는 OpenAI에도 최대 500억달러를 투자해 양 진영에 모두 발을 걸침.",
     "tags": [
       "AWS",
       "Trainium"
@@ -292,7 +301,7 @@ const NODES = [
     "ticker": "ORCL",
     "sector": "cloud",
     "role": "AI 전용 클라우드 급성장",
-    "desc": "OCI로 대형 AI 기업에 GPU 인프라를 임대. 수주잔고(RPO)가 실적 선행지표.",
+    "desc": "OCI로 대형 AI 기업에 GPU 인프라를 임대. OpenAI와 5년 약 3,000억달러 규모 Stargate 계약을 맺었으나, 2026년 3월 텍사스 플래그십 확장이 무산되는 등 자금 조달 부담이 실적 변수.",
     "tags": [
       "OCI",
       "RPO"
@@ -304,7 +313,7 @@ const NODES = [
     "ticker": null,
     "sector": "ai",
     "role": "ChatGPT (비상장)",
-    "desc": "비상장이지만 GPU 수요의 최대 발원지. MS·오라클 인프라를 사용하며 자체칩 개발도 추진.",
+    "desc": "비상장이지만 GPU 수요의 최대 발원지. 2026년 4월 MS와의 독점 계약이 풀리며 모든 주요 클라우드를 쓸 수 있게 됐고, 같은 해 2월 아마존으로부터 최대 500억달러를 유치. 브로드컴과 만든 자체 추론칩 Jalapeño를 6월 공개.",
     "tags": [
       "비상장",
       "GPT"
@@ -458,7 +467,7 @@ const LINKS = [
     "from": "hynix",
     "to": "nvda",
     "type": "supply",
-    "label": "HBM 최대 공급 (핵심 병목)"
+    "label": "HBM 최대 공급 (HBM4 점유율 55%)"
   },
   {
     "from": "mu",
@@ -470,7 +479,7 @@ const LINKS = [
     "from": "samsung",
     "to": "nvda",
     "type": "supply",
-    "label": "HBM 공급 확대 추진"
+    "label": "HBM4 공급 (2026.2 양산, 점유율 28%)"
   },
   {
     "from": "hynix",
@@ -488,7 +497,7 @@ const LINKS = [
     "from": "mu",
     "to": "hynix",
     "type": "compete",
-    "label": "HBM 3파전"
+    "label": "HBM4 3파전 (하이닉스 55 · 삼성 28 · 마이크론 17)"
   },
   {
     "from": "nvda",
@@ -548,13 +557,13 @@ const LINKS = [
     "from": "avgo",
     "to": "openai",
     "type": "partner",
-    "label": "자체 추론칩 공동 개발"
+    "label": "Jalapeño 추론칩 공동 개발 (2026.6 공개)"
   },
   {
     "from": "mrvl",
     "to": "amzn",
     "type": "partner",
-    "label": "Trainium 계열 참여"
+    "label": "Trainium 주 설계 파트너 (3·4세대는 불확실)"
   },
   {
     "from": "avgo",
@@ -596,25 +605,31 @@ const LINKS = [
     "from": "msft",
     "to": "openai",
     "type": "invest",
-    "label": "대규모 투자·독점 클라우드"
+    "label": "대규모 투자 · 2026.4 비독점 전환"
+  },
+  {
+    "from": "amzn",
+    "to": "openai",
+    "type": "invest",
+    "label": "2026.2 최대 500억달러 투자 (1,100억 라운드)"
   },
   {
     "from": "orcl",
     "to": "openai",
     "type": "customer",
-    "label": "OCI 인프라 공급"
+    "label": "Stargate — 5년 약 3,000억달러"
   },
   {
     "from": "amzn",
     "to": "anthropic",
     "type": "invest",
-    "label": "대규모 투자 + AWS 사용"
+    "label": "최대 250억달러 투자 · Trainium 5GW"
   },
   {
     "from": "googl",
     "to": "anthropic",
     "type": "invest",
-    "label": "지분 투자 + TPU 제공"
+    "label": "최대 400억달러 투자 · TPU 5GW"
   },
   {
     "from": "googl",
@@ -653,22 +668,16 @@ const LINKS = [
     "label": "GPU → 서버 조립"
   },
   {
-    "from": "smci",
-    "to": "meta",
-    "type": "customer",
-    "label": "AI 서버 납품"
-  },
-  {
     "from": "anet",
     "to": "meta",
     "type": "customer",
-    "label": "스위치 납품"
+    "label": "최대 고객 (아리스타 매출의 26%)"
   },
   {
     "from": "anet",
     "to": "msft",
     "type": "customer",
-    "label": "스위치 납품"
+    "label": "주요 고객 (아리스타 매출의 16%)"
   },
   {
     "from": "avgo",
@@ -680,19 +689,19 @@ const LINKS = [
     "from": "anet",
     "to": "nvda",
     "type": "compete",
-    "label": "이더넷 vs InfiniBand"
+    "label": "이더넷 vs InfiniBand — 엔비디아가 Spectrum-X로 역공"
   },
   {
     "from": "vrt",
     "to": "msft",
     "type": "customer",
-    "label": "전력·냉각 설비"
+    "label": "전력·냉각 (조기 파트너십, 개별 계약 미확인)"
   },
   {
     "from": "vrt",
     "to": "orcl",
     "type": "customer",
-    "label": "전력·냉각 설비"
+    "label": "전력·냉각 (조기 파트너십, 개별 계약 미확인)"
   },
   {
     "from": "arm",
@@ -716,6 +725,6 @@ const LINKS = [
     "from": "pltr",
     "to": "msft",
     "type": "partner",
-    "label": "Azure 상에서 AIP 제공"
+    "label": "Azure 정부·기밀 클라우드에 AIP 배포"
   }
 ];
