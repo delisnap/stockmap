@@ -55,11 +55,28 @@ GitHub Actions가 서버에서 시세를 받아 `quotes.json`으로 커밋하고
 ## 기업 · 업종 추가
 
 사이트 왼쪽의 **＋ 업종 추가 / ＋ 기업 추가** 버튼으로 브라우저에서 바로 추가할 수 있다.
-추가한 내용은 그 브라우저에만 저장되므로, 사이트에 영구 반영하려면:
+추가한 내용은 일단 그 브라우저에만 저장된다. 사이트에 영구 반영하는 방법은 두 가지다.
+
+### 1) GitHub에 반영 (원클릭)
+
+**내가 추가한 항목 → GitHub에 반영** 버튼이 저장소의 `data.js`를 바로 커밋한다.
+처음 한 번은 토큰 등록이 필요하다:
+
+1. [Fine-grained token 발급](https://github.com/settings/personal-access-tokens/new)
+2. **Repository access**: `Only select repositories` → 이 저장소만
+3. **Permissions → Repository permissions → Contents: Read and write** (이것 하나만)
+4. 사이트의 **설정**에 붙여넣기
+
+커밋되면 워크플로가 새 종목 시세를 받아오고 Pages가 다시 배포된다.
+
+> 토큰은 이 브라우저의 localStorage에만 저장되고 `api.github.com` 외에는 전송되지 않는다.
+> 그래도 **공용 PC에서는 쓰지 말 것** — 저장소 쓰기 권한이 남는다.
+> 권한은 Contents 하나로 제한하고 만료일을 짧게 두는 것을 권한다.
+> 유출이 의심되면 GitHub 설정에서 토큰을 폐기하면 즉시 무효가 된다.
+
+### 2) 파일로 내보내기 (토큰 없이)
 
 **data.js로 내보내기** → 받은 파일로 저장소의 `data.js`를 덮어쓰고 → 푸시.
-
-푸시하면 새 종목의 시세도 워크플로가 자동으로 받아온다.
 
 ## 데이터 관련 주의
 

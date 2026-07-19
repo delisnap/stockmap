@@ -160,7 +160,7 @@
   .f{margin-bottom:13px}
   .f label{display:block;font-size:11px;color:var(--tx3);margin-bottom:5px;letter-spacing:.3px}
   .f .req{color:var(--accent)}
-  .f input[type=text], .f textarea, .f select{
+  .f input[type=text], .f input[type=password], .f textarea, .f select{
     width:100%;padding:8px 10px;border-radius:7px;border:1px solid var(--line);
     background:var(--panel2);color:var(--tx);font-size:13px;outline:none;
     font-family:inherit;
@@ -224,6 +224,8 @@
     <div class="sec" id="mybox" style="display:none">
       <h2>내가 추가한 항목</h2>
       <div id="mystat" style="font-size:12px;color:var(--tx2);line-height:1.7"></div>
+      <button class="btn solid pri" id="publishBtn">GitHub에 반영</button>
+      <div id="ghstat" style="font-size:10.5px;color:var(--tx3);margin-top:6px;line-height:1.5"></div>
       <button class="btn solid" id="exportBtn">data.js로 내보내기</button>
       <button class="btn solid" id="resetBtn">추가 항목 전체 삭제</button>
     </div>
@@ -321,8 +323,15 @@ function saveCustom(){
 let SEC, ALLN, ALLL;
 function mergeData(){
   SEC  = { ...SECTORS, ...custom.sectors };
-  ALLN = [ ...NODES, ...custom.nodes ];
-  ALLL = [ ...LINKS,  ...custom.links ];
+  // GitHub에 반영하면 같은 항목이 data.js에도 들어온다.
+  // 그대로 두면 노드가 두 개가 되므로 id 기준으로 합친다 (사용자 쪽이 최신).
+  const nodeMap = new Map();
+  for(const n of [...NODES, ...custom.nodes]) nodeMap.set(n.id, n);
+  ALLN = [...nodeMap.values()];
+
+  const linkMap = new Map();
+  for(const l of [...LINKS, ...custom.links]) linkMap.set(`${l.from}|${l.to}|${l.type}`, l);
+  ALLL = [...linkMap.values()];
   // 삭제된 업종을 참조하는 노드는 첫 업종으로 흡수
   const fallback = Object.keys(SEC)[0];
   ALLN.forEach(n=>{ if(!SEC[n.sector]) n.sector = fallback; });
@@ -414,6 +423,12 @@ function renderMyBox(){
   box.style.display='';
   document.getElementById('mystat').innerHTML =
     `업종 <b>${ss}</b> · 기업 <b>${ns}</b> · 관계 <b>${ls}</b>`;
+
+  const c = ghCfg();
+  document.getElementById('ghstat').innerHTML = c.token
+    ? `${esc(c.owner)}/${esc(c.repo)} · <a href="#" id="ghSetup" style="color:var(--tx3)">설정</a>`
+    : `<a href="#" id="ghSetup" style="color:var(--accent)">토큰을 등록하면 원클릭으로 반영됩니다 →</a>`;
+  document.getElementById('ghSetup').onclick = e=>{ e.preventDefault(); openPublishSettings(); };
 }
 
 function nodeVisible(n){ return state.sectors.has(n.sector); }
@@ -585,8 +600,9 @@ function drawDetail(n){
         <span class="c ${cls}">${q?`${q.chg>=0?'+':''}${fmt(q.chg)} (${q.pct>=0?'+':''}${q.pct.toFixed(2)}%)`:''}</span>
       </div>
       <div class="asof">${q ? esc(q.time)+' 기준'
-        : (mine && snapAt ? '시세 대기 중 — data.js로 내보내 푸시하면 채워집니다'
-                          : '시세를 불러오지 못했습니다 — 티커를 확인하세요')}</div>`
+        : (mine && snapAt
+            ? '시세 대기 중 — <a href="#" id="pubHere" style="color:var(--accent)">GitHub에 반영</a>하면 채워집니다'
+            : '시세를 불러오지 못했습니다 — 티커를 확인하세요')}</div>`
       : `<div class="asof" style="margin-top:14px">비상장 — 시세 없음</div>` }
     <div class="role">${esc(n.role)}</div>
     <div class="desc">${esc(n.desc)}</div>
@@ -607,6 +623,8 @@ function drawDetail(n){
                <button class="btn solid" id="delN">이 기업 삭제</button>` : '' }
   `;
   D.querySelectorAll('.rel-item').forEach(el=>el.onclick=()=>select(byId[el.dataset.id]));
+  const ph = D.querySelector('#pubHere');
+  if(ph) ph.onclick = e=>{ e.preventDefault(); ghPublish(); };
   if(mine){
     D.querySelector('#editN').onclick = ()=>openCompany(n.id);
     D.querySelector('#delN').onclick  = ()=>delCompany(n.id);
@@ -851,10 +869,9 @@ function delCompany(id){
 }
 
 /* ── 내보내기 / 초기화 ── */
-document.getElementById('exportBtn').onclick = ()=>{
+function buildDataJs(){
   const j = o => JSON.stringify(o, null, 2);
-  const txt =
-`/* StockMap 데이터 — ${new Date().toLocaleString('ko-KR')} 내보냄 */
+  return `/* StockMap 데이터 — ${new Date().toLocaleString('ko-KR')} 내보냄 */
 
 const SECTORS = ${j(SEC)};
 
@@ -864,6 +881,9 @@ const NODES = ${j(ALLN.map(({id,name,ticker,sector,role,desc,tags})=>({id,name,t
 
 const LINKS = ${j(ALLL.map(({from,to,type,label})=>({from,to,type,label})))};
 `;
+}
+document.getElementById('exportBtn').onclick = ()=>{
+  const txt = buildDataJs();
   const url = URL.createObjectURL(new Blob([txt],{type:'text/javascript'}));
   const a=document.createElement('a'); a.href=url; a.download='data.js'; a.click();
   setTimeout(()=>URL.revokeObjectURL(url),1000);
@@ -875,6 +895,116 @@ document.getElementById('resetBtn').onclick = ()=>{
   saveCustom(); state.selected=null; rebuildAll(false);
   toast('추가 항목을 모두 삭제했습니다');
 };
+
+/* ═══════════════════════════════════════════
+   8-2. GitHub에 바로 반영 (Contents API)
+   토큰은 이 브라우저의 localStorage에만 두고 api.github.com 외에는 보내지 않는다.
+   ═══════════════════════════════════════════ */
+const GH_LS = 'stockmap.gh';
+function ghCfg(){
+  let c = {};
+  try{ c = JSON.parse(localStorage.getItem(GH_LS)) || {}; }catch(e){}
+  const m = location.hostname.match(/^([^.]+)\.github\.io$/);
+  const seg = location.pathname.split('/').filter(Boolean);
+  return {
+    owner:  c.owner  || (m ? m[1] : ''),
+    repo:   c.repo   || (m ? (seg[0] || `${m[1]}.github.io`) : ''),
+    branch: c.branch || 'main',
+    token:  c.token  || '',
+  };
+}
+const ghSave = c => localStorage.setItem(GH_LS, JSON.stringify(c));
+
+// UTF-8 문자열 → base64 (한글이 있어 btoa 직접 사용 불가)
+function b64(str){
+  const bytes = new TextEncoder().encode(str);
+  let bin = '';
+  for(let i=0;i<bytes.length;i+=0x8000) bin += String.fromCharCode(...bytes.subarray(i,i+0x8000));
+  return btoa(bin);
+}
+
+async function ghPublish(){
+  const c = ghCfg();
+  if(!c.token || !c.owner || !c.repo){ openPublishSettings(); return; }
+  const api = `https://api.github.com/repos/${c.owner}/${c.repo}/contents/data.js`;
+  const H = { Authorization:`Bearer ${c.token}`, Accept:'application/vnd.github+json',
+              'X-GitHub-Api-Version':'2022-11-28' };
+  const btn = document.getElementById('publishBtn') || {};
+  const label = btn.textContent;
+  btn.disabled = true; btn.textContent = '반영 중…';
+  try{
+    const cur = await fetch(`${api}?ref=${encodeURIComponent(c.branch)}`, {headers:H});
+    if(cur.status === 401) throw new Error('토큰이 잘못되었거나 만료되었습니다');
+    if(cur.status === 404) throw new Error('저장소나 브랜치를 찾을 수 없습니다 (토큰 권한도 확인하세요)');
+    if(!cur.ok) throw new Error(`data.js 조회 실패 (HTTP ${cur.status})`);
+    const sha = (await cur.json()).sha;
+
+    const res = await fetch(api, {
+      method:'PUT', headers:{...H, 'Content-Type':'application/json'},
+      body: JSON.stringify({
+        message: `지도 업데이트 — 업종 ${Object.keys(custom.sectors).length} · 기업 ${custom.nodes.length}`,
+        content: b64(buildDataJs()), sha, branch: c.branch,
+      }),
+    });
+    if(res.status === 403) throw new Error('권한이 없습니다 — 토큰에 Contents 쓰기 권한이 필요합니다');
+    if(res.status === 409) throw new Error('다른 곳에서 먼저 수정됐습니다 — 새로고침 후 다시 시도하세요');
+    if(!res.ok) throw new Error(`반영 실패 (HTTP ${res.status})`);
+    toast('반영됨 — 몇 분 뒤 시세가 채워지고 사이트가 갱신됩니다');
+  }catch(e){
+    toast('❌ ' + e.message);
+  }finally{
+    btn.disabled = false; btn.textContent = label;
+  }
+}
+
+function openPublishSettings(){
+  const c = ghCfg();
+  modal.innerHTML = `
+    <h2>GitHub 반영 설정</h2>
+    <p class="sub">추가한 내용을 저장소의 <b>data.js</b>에 바로 커밋합니다.
+      커밋되면 워크플로가 새 종목 시세를 받아오고 사이트가 다시 배포됩니다.</p>
+    <div class="row2">
+      <div class="f"><label>소유자</label><input type="text" id="ghOwner" value="${esc(c.owner)}"></div>
+      <div class="f"><label>저장소</label><input type="text" id="ghRepo" value="${esc(c.repo)}"></div>
+      <div class="f"><label>브랜치</label><input type="text" id="ghBranch" value="${esc(c.branch)}"></div>
+    </div>
+    <div class="f">
+      <label>액세스 토큰 ${c.token?'<span style="color:var(--down)">· 저장됨</span>':''}</label>
+      <input type="password" id="ghToken" placeholder="${c.token?'변경할 때만 입력':'github_pat_...'}"
+             autocomplete="off">
+      <div class="tip">
+        <b>Fine-grained token</b>을 권장합니다 —
+        <i>이 저장소만</i> 선택하고 권한은 <b>Contents: Read and write</b> 하나만 주세요.<br>
+        토큰은 이 브라우저에만 저장되고 api.github.com 외에는 전송되지 않습니다.
+        <b style="color:var(--up)">공용 PC에서는 사용하지 마세요.</b>
+      </div>
+    </div>
+    <div class="err" id="err"></div>
+    <div class="acts">
+      ${c.token?'<button id="clear" style="margin-right:auto">토큰 삭제</button>':''}
+      <button id="cancel">취소</button>
+      <button class="pri" id="ok">저장</button>
+    </div>`;
+  veil.classList.add('on');
+  modal.querySelector('#cancel').onclick = closeModal;
+  const clr = modal.querySelector('#clear');
+  if(clr) clr.onclick = ()=>{
+    ghSave({...ghCfg(), token:''});
+    closeModal(); renderMyBox(); toast('토큰을 삭제했습니다');
+  };
+  modal.querySelector('#ok').onclick = ()=>{
+    const owner = modal.querySelector('#ghOwner').value.trim();
+    const repo  = modal.querySelector('#ghRepo').value.trim();
+    const typed = modal.querySelector('#ghToken').value.trim();
+    if(!owner || !repo){ modal.querySelector('#err').textContent='소유자와 저장소를 입력하세요.'; return; }
+    if(!typed && !c.token){ modal.querySelector('#err').textContent='토큰을 입력하세요.'; return; }
+    ghSave({ owner, repo, branch: modal.querySelector('#ghBranch').value.trim() || 'main',
+             token: typed || c.token });
+    closeModal(); renderMyBox(); toast('설정을 저장했습니다');
+  };
+}
+document.getElementById('publishBtn').onclick = ghPublish;
+// #ghSetup은 renderMyBox()가 다시 만들 때마다 그 안에서 바인딩한다
 
 /* ═══════════ 9. 팬 / 줌 / 드래그 ═══════════ */
 let view={x:0,y:0,k:1};
