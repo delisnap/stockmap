@@ -1,0 +1,37 @@
+name: 시세 갱신
+
+on:
+  schedule:
+    - cron: '*/30 * * * 1-5'   # 평일 30분마다 (UTC 기준, GitHub 사정으로 지연될 수 있음)
+  workflow_dispatch:            # Actions 탭에서 수동 실행
+  push:
+    branches: [main]
+    paths: ['data.js']          # 종목을 추가하면 바로 시세를 받아옴
+
+permissions:
+  contents: write
+
+concurrency:
+  group: quotes
+  cancel-in-progress: true
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '20' }
+
+      - run: node scripts/fetch-quotes.mjs
+
+      - name: quotes.json 커밋
+        run: |
+          if git diff --quiet -- quotes.json; then
+            echo "변동 없음"; exit 0
+          fi
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add quotes.json
+          git commit -m "시세 갱신 $(date -u '+%Y-%m-%d %H:%M UTC')"
+          git push
