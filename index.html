@@ -79,10 +79,13 @@
 
   /* ── 그래프 ── */
   #graphwrap{flex:1; position:relative; min-width:0}
-  svg{width:100%;height:100%;display:block;cursor:grab}
-  svg.drag{cursor:grabbing}
-  .link{stroke-width:1.4; opacity:var(--linkop); transition:opacity .18s, stroke-width .18s}
-  .link.hot{opacity:.95; stroke-width:2.4}
+  /* #svg로 좁힌다 — 맨 svg{}는 범례·아이콘 SVG까지 늘려버린다 */
+  #svg{width:100%;height:100%;display:block;cursor:grab}
+  #svg.drag{cursor:grabbing}
+  /* 선 스타일 = 검증 상태 (실선 확인됨 / 점선 미확인), 색 = 관계 종류 */
+  .link{stroke-width:.7; stroke-linecap:round; opacity:var(--linkop);
+    transition:opacity .18s, stroke-width .18s}
+  .link.hot{opacity:.95; stroke-width:1.2}
   .link.dim{opacity:var(--linkdim)}
   .node{cursor:pointer}
   .node circle{transition:.18s}
@@ -153,6 +156,13 @@
   .vrow b{margin-left:auto;font-variant-numeric:tabular-nums;color:var(--tx);font-weight:600}
   .vdot{width:7px;height:7px;border-radius:50%;flex:none}
   .vtoggle{margin-top:7px}
+  .vlegend{
+    display:flex;flex-direction:column;gap:5px;margin-top:9px;
+    padding-top:9px;border-top:1px solid var(--line);
+    font-size:10.5px;color:var(--tx3);
+  }
+  .vlegend span{display:flex;align-items:center;gap:7px;white-space:nowrap}
+  .vlegend svg{flex:none;width:18px;height:4px;overflow:visible}
   .vchip{
     display:inline-flex;align-items:center;gap:4px;flex:none;
     font-size:9.5px;font-weight:700;padding:2px 6px;border-radius:4px;
@@ -251,6 +261,13 @@
       <h2>검증</h2>
       <div class="vbar" id="vbar"></div>
       <div id="vstat"></div>
+      <div class="vlegend">
+        <span><svg width="18" height="4" aria-hidden="true"><line x1="0" y1="2" x2="18" y2="2"
+          stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>실선 확인됨</span>
+        <span><svg width="18" height="4" aria-hidden="true"><line x1="0" y1="2" x2="18" y2="2"
+          stroke="currentColor" stroke-width="1.2" stroke-linecap="round"
+          stroke-dasharray=".8 3.5"/></svg>점선 미확인</span>
+      </div>
       <label class="chk vtoggle" id="tPaint">
         <span class="bar" style="background:var(--tx3)"></span>
         <span style="color:inherit">검증 상태로 색칠</span>
@@ -588,7 +605,7 @@ function build(){
     const p=document.createElementNS(NS,'line');
     p.setAttribute('class','link');
     p.setAttribute("stroke",adj(LINK_TYPES[l.type].color));
-    if(LINK_TYPES[l.type].dash) p.setAttribute('stroke-dasharray',LINK_TYPES[l.type].dash);
+    // 대시는 build()가 아니라 paint()에서 검증 상태에 따라 결정한다
     GL.appendChild(p); lineEls.set(l,p);
   });
   nodes.forEach(n=>{
@@ -652,6 +669,9 @@ function paint(){
     if(!vis) continue;
     // 검증 모드에서는 관계 종류 대신 검증 상태로 칠한다
     p.setAttribute('stroke', state.verifyPaint ? VSTATUS[st].color : adj(LINK_TYPES[l.type].color));
+    // 확인된 관계만 실선. 갱신 필요는 긴 점선, 미검증은 짧은 점선
+    if(st === 'ok') p.removeAttribute('stroke-dasharray');
+    else p.setAttribute('stroke-dasharray', st === 'due' ? '5 3.5' : '.5 3.5');
     const on = focus && (l.s===focus || l.t===focus);
     p.classList.toggle('hot', !!on);
     p.classList.toggle('dim', !!focus && !on);
